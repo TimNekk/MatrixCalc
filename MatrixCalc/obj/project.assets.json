@@ -8,24 +8,31 @@
     "net5.0": []
   },
   "packageFolders": {
-    "C:\\Users\\herew\\.nuget\\packages\\": {}
+    "C:\\Users\\herew\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\C# Projects\\MatrixCalc\\MatrixCalc\\MatrixCalc.csproj",
+      "projectUniqueName": "E:\\Coding\\C# Projects\\MatrixCalc\\MatrixCalc\\MatrixCalc.csproj",
       "projectName": "MatrixCalc",
-      "projectPath": "D:\\C# Projects\\MatrixCalc\\MatrixCalc\\MatrixCalc.csproj",
+      "projectPath": "E:\\Coding\\C# Projects\\MatrixCalc\\MatrixCalc\\MatrixCalc.csproj",
       "packagesPath": "C:\\Users\\herew\\.nuget\\packages\\",
-      "outputPath": "D:\\C# Projects\\MatrixCalc\\MatrixCalc\\obj\\",
+      "outputPath": "E:\\Coding\\C# Projects\\MatrixCalc\\MatrixCalc\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft\\Xamarin\\NuGet"
+      ],
       "configFilePaths": [
-        "C:\\Users\\herew\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\herew\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Xamarin.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net5.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -58,7 +65,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Users\\herew\\.dotnet\\sdk\\5.0.400\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.400\\RuntimeIdentifierGraph.json"
       }
     }
   }

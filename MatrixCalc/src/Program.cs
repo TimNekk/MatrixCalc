@@ -1,17 +1,30 @@
 ﻿using System;
-using static MatrixCalc.src.Settings;
 
 namespace MatrixCalc
 {
-    class Program
+    /// <summary>
+    ///     Main class
+    /// </summary>
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            // Array.ForEach(System.IO.File.ReadAllText(@"lol.txt").Split(", "), Console.WriteLine);
-            // Console.ReadKey();
-            
-            // MatrixCreator.CreateUserMatrix();
-            Console.WriteLine(MatrixCreator.CreateRandomMatrix(3, 3));
+            // 1_____789
+            var matrix1 = MatrixCreator.CreateUserMatrix();
+            Console.Clear();
+            // var matrix2 = MatrixCreator.CreateUserMatrix();
+            // Console.Clear();
+            // var matrix1 = MatrixCreator.CreateRandomMatrix(1, 2);
+            // var matrix2 = MatrixCreator.CreateRandomMatrix(2, 1);
+
+            Console.WriteLine(matrix1);
+            // Console.WriteLine(matrix2);
+
+            // matrix1.MultiplyByMatrix(matrix2);
+
+            Console.WriteLine(matrix1.GetTrace());
+
+            Console.ReadKey();
         }
     }
 }

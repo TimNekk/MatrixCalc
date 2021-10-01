@@ -3,30 +3,30 @@ using System.IO;
 
 namespace src
 {
+    /// <summary>
+    ///     Class that reads files
+    /// </summary>
     public static class FileReader
     {
         /// <summary>
-        /// Method gets content of the given file
+        ///     Method gets content of the given file
         /// </summary>
         /// <param name="filePath"></param>
         /// <returns>ASCII form file</returns>
         private static string GetTextFromFile(string filePath)
         {
-            if (!File.Exists(filePath))
-            {
-                throw new ArgumentException($"{filePath} file is missing.");
-            }
+            if (!File.Exists(filePath)) throw new ArgumentException($"{filePath} file is missing.");
 
             return File.ReadAllText(filePath);
         }
 
         /// <summary>
-        /// Method prints content of the given file
+        ///     Method prints content of the given file
         /// </summary>
         /// <param name="fileName"></param>
         public static void PrintTextFromFile(string fileName)
         {
-            string text = GetTextFromFile(fileName);
+            var text = GetTextFromFile(fileName);
             Console.WriteLine(text);
         }
     }
