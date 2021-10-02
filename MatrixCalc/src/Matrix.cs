@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace MatrixCalc
@@ -23,12 +24,12 @@ namespace MatrixCalc
         }
 
         /// <summary>
-        /// Size of column
+        ///     Size of column
         /// </summary>
         public int ColumnSize => _matrix.Length;
-        
+
         /// <summary>
-        /// Size of row
+        ///     Size of row
         /// </summary>
         public int RowSize => _matrix[0].Length;
 
@@ -58,7 +59,7 @@ namespace MatrixCalc
         /// <param name="columnIndex"></param>
         /// <param name="rowIndex"></param>
         /// <returns>Cell value</returns>
-        public double GetItem(int columnIndex, int rowIndex)
+        private double GetItem(int columnIndex, int rowIndex)
         {
             return _matrix[columnIndex][rowIndex];
         }
@@ -69,6 +70,9 @@ namespace MatrixCalc
         /// <returns>Matrix as string</returns>
         public override string ToString()
         {
+            // Remove negative Zeros
+            SetNegativeZeroToPositiveZeros();
+
             var matrix = "";
 
             // Create array of longest number in a column
@@ -108,10 +112,10 @@ namespace MatrixCalc
         ///     Gets matrix with replaced current symbol
         /// </summary>
         /// <returns>Matrix as string</returns>
-        public string ToStringWithReplacedCurrentSymbol()
+        public string ToStringWithReplacedCurrentSymbol(bool useSOLE = false)
         {
             // Getting matrix as string
-            var matrix = ToString();
+            var matrix = useSOLE ? ToStringAsSOLE() : ToString();
 
             // Getting string that will be replaced
             var stringToReplace = double.PositiveInfinity.ToString();
@@ -121,6 +125,37 @@ namespace MatrixCalc
 
             // Replacing string
             matrix = matrix.Remove(firstEmptyCellIndex, stringToReplace.Length).Insert(firstEmptyCellIndex, "_");
+
+            return matrix;
+        }
+
+        /// <summary>
+        ///     Gets matrix as SOLE
+        /// </summary>
+        /// <returns>SOLE</returns>
+        public string ToStringAsSOLE()
+        {
+            var matrix = "";
+
+            for (var columnIndex = 0; columnIndex < ColumnSize; columnIndex++)
+            {
+                if (_matrix[columnIndex].Sum() == 0) continue;
+
+                if (_matrix[columnIndex].Take(RowSize - 1).Sum() == 0) throw new ArgumentException("Нет решений!");
+                
+                string row = " │" + string.Join("", _matrix[columnIndex].Take(RowSize - 1)
+                              .Select((item, index) =>
+                                  item != 0
+                                      ? (item > 0 ? " +" : " ") +
+                                        (item != 1 ? $"{item}" : item < 0 ? "-" : "") +
+                                        (char) (index + 97)
+                                      : "")) +
+                          $" = {GetItem(columnIndex, RowSize - 1)}\n";
+
+                if (row[3] == '+') row = row.Remove(3, 1);
+
+                matrix += row;
+            }
 
             return matrix;
         }
@@ -250,6 +285,209 @@ namespace MatrixCalc
                 trace += GetItem(index, index);
 
             return trace;
+        }
+
+        /// <summary>
+        ///     Getting determinant of the matrix
+        /// </summary>
+        /// <returns>Determinant</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public double GetDeterminant()
+        {
+            // Checks if not square
+            if (Validator.IsMatrixSquare(this) is false) throw new ArgumentException("Matrix must be square");
+
+            // Checks if 2x2
+            if (ColumnSize == 2 && RowSize == 2)
+            {
+                var diagonal1 = GetItem(0, 0) * GetItem(1, 1);
+                var diagonal2 = GetItem(0, 1) * GetItem(1, 0);
+                return diagonal1 - diagonal2;
+            }
+
+            double determinant = 0;
+
+            // Getting zeros count
+            var (zerosInColumn, rowWithMostZerosIndex) = GetColumnsWithMostZeros();
+            var (zerosInRow, columnWithMostZerosIndex) = GetRowWithMostZeros();
+
+            for (var index = 0; index < ColumnSize; index++)
+            {
+                double selectedNumber, minusRatio;
+                Matrix minorMatrix;
+
+                if (zerosInRow > zerosInColumn)
+                {
+                    selectedNumber = GetItem(columnWithMostZerosIndex, index);
+                    minusRatio = Math.Pow(-1, index + 1 + columnWithMostZerosIndex + 1);
+                    minorMatrix = GetMinorMatrix(columnWithMostZerosIndex, index);
+                }
+                else
+                {
+                    selectedNumber = GetItem(index, rowWithMostZerosIndex);
+                    minusRatio = Math.Pow(-1, index + 1 + rowWithMostZerosIndex + 1);
+                    minorMatrix = GetMinorMatrix(index, rowWithMostZerosIndex);
+                }
+
+                determinant += selectedNumber * minusRatio * minorMatrix.GetDeterminant();
+            }
+
+            return determinant;
+        }
+
+        public void SolveByGaussianElimination()
+        {
+            ConvertToRowEchelonMatrix();
+        }
+
+        /// <summary>
+        /// Converts Matrix to Row Echelon Form
+        /// </summary>
+        private void ConvertToRowEchelonMatrix()
+        {
+            // НУЖНО СДЕЛАТЬ СМЕНУ СТРОК ЕСЛИ 0 НА ПЕРВОМ МЕСТЕ
+            
+            // Gets the row limit
+            var rowLimit = RowSize >= ColumnSize ? RowSize == ColumnSize ? 1 : 0 : 2;
+
+            for (var rowIndex = 0; rowIndex < ColumnSize - rowLimit; rowIndex++)
+            {
+                // Gets the row item
+                var rowItem = GetItem(rowIndex, rowIndex);
+
+                for (var columnIndex = rowIndex + 1; columnIndex < ColumnSize; columnIndex++)
+                {
+                    // Gets the column item
+                    var columnItem = GetItem(columnIndex, rowIndex);
+
+                    // Gets the ratio for multiplication
+                    var ratio = columnItem / rowItem;
+
+                    // Subtracts rows
+                    SubtractRowFromRow(columnIndex, rowIndex, ratio);
+                }
+
+                // Sets leader of row to 1
+                if (rowItem != 0) MultiplyRowByNumber(rowIndex, 1 / rowItem);
+            }
+        }
+
+        private void SetNegativeZeroToPositiveZeros()
+        {
+            _matrix = _matrix.Select(row => row.Select(item => item == -0 ? 0 : item).ToArray()).ToArray();
+        }
+
+        /// <summary>
+        ///     Multiplies row by given number
+        /// </summary>
+        /// <param name="columnIndex"></param>
+        /// <param name="number"></param>
+        private void MultiplyRowByNumber(int columnIndex, double number)
+        {
+            _matrix[columnIndex] = _matrix[columnIndex].Select(item => Math.Round(item * number, 6)).ToArray();
+        }
+
+        /// <summary>
+        ///     Subtracts one row from another
+        /// </summary>
+        /// <param name="columnThatChangesIndex"></param>
+        /// <param name="columnIndex"></param>
+        private void SubtractRowFromRow(int columnThatChangesIndex, int columnIndex, double ratio)
+        {
+            for (var rowIndex = 0; rowIndex < RowSize; rowIndex++)
+                _matrix[columnThatChangesIndex][rowIndex] = Math.Round(
+                    _matrix[columnThatChangesIndex][rowIndex] - _matrix[columnIndex][rowIndex] * ratio, 6);
+        }
+
+        /// <summary>
+        ///     Getting minor matrix
+        /// </summary>
+        /// <param name="columnRemoveIndex">Column that should be removed</param>
+        /// <param name="rowRemoveIndex">Row that should be removed</param>
+        /// <returns>Minor matrix</returns>
+        private Matrix GetMinorMatrix(int columnRemoveIndex, int rowRemoveIndex)
+        {
+            // Init empty minor matrix
+            var minorMatrixData = new List<double[]>();
+
+            for (var columnIndex = 0; columnIndex < ColumnSize; columnIndex++)
+            {
+                // Check if row should be removed
+                if (columnIndex == columnRemoveIndex) continue;
+
+                var row = new List<double>();
+
+                for (var rowIndex = 0; rowIndex < RowSize; rowIndex++)
+                {
+                    // Check if column should be removed
+                    if (rowIndex == rowRemoveIndex) continue;
+
+                    // Add item to row
+                    row.Add(GetItem(columnIndex, rowIndex));
+                }
+
+                // Add row to matrix
+                minorMatrixData.Add(row.ToArray());
+            }
+
+            // Create matrix with given params
+            var minorMatrix = new Matrix(minorMatrixData.ToArray());
+            return minorMatrix;
+        }
+
+        /// <summary>
+        ///     Getting row with most zeros
+        /// </summary>
+        /// <returns>Zeros count and row index</returns>
+        private (int, int) GetColumnsWithMostZeros()
+        {
+            // Counter array
+            int[] maxZerosCount = {0, 0};
+
+            for (var rowIndex = 0; rowIndex < RowSize; rowIndex++)
+            {
+                var column = new double[ColumnSize];
+
+                // Getting column
+                for (var columnIndex = 0; columnIndex < ColumnSize; columnIndex++) column[columnIndex] = _matrix[columnIndex][rowIndex];
+
+                // Count zeros in current column
+                var zerosInColumn = column.Count(item => item == 0);
+
+                // Update counter if more that max
+                if (zerosInColumn > maxZerosCount[0])
+                {
+                    maxZerosCount[0] = zerosInColumn;
+                    maxZerosCount[1] = rowIndex;
+                }
+            }
+
+            return (maxZerosCount[0], maxZerosCount[1]);
+        }
+
+        /// <summary>
+        ///     Getting column with most zeros
+        /// </summary>
+        /// <returns>Zeros count and column index</returns>
+        private (int, int) GetRowWithMostZeros()
+        {
+            // Counter array
+            int[] maxZerosCount = {0, 0};
+
+            for (var columnIndex = 0; columnIndex < ColumnSize; columnIndex++)
+            {
+                // Count zeros in current row
+                var zerosInRowCount = _matrix[columnIndex].Count(item => item == 0);
+
+                // Update counter if more that max
+                if (zerosInRowCount > maxZerosCount[0])
+                {
+                    maxZerosCount[0] = zerosInRowCount;
+                    maxZerosCount[1] = columnIndex;
+                }
+            }
+
+            return (maxZerosCount[0], maxZerosCount[1]);
         }
 
         /// <summary>

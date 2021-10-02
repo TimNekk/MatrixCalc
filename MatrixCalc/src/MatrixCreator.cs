@@ -12,16 +12,17 @@ namespace MatrixCalc
         ///     Create Matrix with user data
         /// </summary>
         /// <returns>Matrix</returns>
-        public static Matrix CreateUserMatrix()
+        public static Matrix CreateUserMatrix(bool useSOLE=false)
         {
             // Getting size from user
-            var (columnSize, rowSize) = AskUserForMatrixSize();
+            var (columnSize, rowSize) = AskUserForMatrixSize(useSOLE);
 
             // Getting matrix data from user
-            var matrix = AskUserForMatrixData(columnSize, rowSize);
+            var matrix = AskUserForMatrixData(columnSize, rowSize, useSOLE);
 
             return matrix;
         }
+
 
         /// <summary>
         ///     Create empty matrix
@@ -59,7 +60,7 @@ namespace MatrixCalc
         /// <param name="columnSize"></param>
         /// <param name="rowSize"></param>
         /// <returns>Random matrix</returns>
-        public static Matrix CreateRandomMatrix(int columnSize, int rowSize)
+        public static Matrix CreateRandomMatrix(int columnSize, int rowSize, bool rounded = false)
         {
             // Initialize empty array
             var matrixData = new double[columnSize][];
@@ -73,6 +74,7 @@ namespace MatrixCalc
                 {
                     // Getting random number
                     var randomNumber = GenerateRandomDouble();
+                    if (rounded) randomNumber = Math.Round(randomNumber);
                     row[rowIndex] = randomNumber;
                 }
 
@@ -109,7 +111,7 @@ namespace MatrixCalc
         ///     Getting size from user
         /// </summary>
         /// <returns>Size Tuple</returns>
-        private static (int, int) AskUserForMatrixSize()
+        private static (int, int) AskUserForMatrixSize(bool useSOLE = false)
         {
             var currentInput = "";
             int columnSize = 0, rowSize = 0; // Default sizes
@@ -121,7 +123,9 @@ namespace MatrixCalc
                 // Getting user input key
                 var numberBeforeX = workingWithFirstNumber ? currentInput : columnSize.ToString(); // Column Size
                 var numberAfterX = workingWithFirstNumber ? " " : currentInput; // Row Size
-                var askLine = $"Введите размер матрицы: {numberBeforeX}x{numberAfterX} "; // Line to ask
+                var askLine = "Введите " +
+                              (useSOLE ? "кол-во уравнений и переменных" : "размер матрицы") +
+                              $": {numberBeforeX}x{numberAfterX} "; // Line to ask
                 var userInput = ConsoleController.AskUserOneCharWithOffset(askLine, offset);
 
                 if (Validator.IsNumber(userInput.KeyChar) && (userInput.KeyChar == '0' && currentInput == "") is false) // If a number
@@ -148,7 +152,7 @@ namespace MatrixCalc
                 }
             }
 
-            return (columnSize, rowSize);
+            return (columnSize, useSOLE ? rowSize + 1 : rowSize);
         }
 
         /// <summary>
@@ -156,8 +160,9 @@ namespace MatrixCalc
         /// </summary>
         /// <param name="columnSize"></param>
         /// <param name="rowSize"></param>
+        /// <param name="useSOLE"></param>
         /// <returns>Matrix</returns>
-        private static Matrix AskUserForMatrixData(int columnSize, int rowSize)
+        private static Matrix AskUserForMatrixData(int columnSize, int rowSize, bool useSOLE = false)
         {
             // Creating empty matrix
             var matrix = CreateEmptyMatrix(columnSize, rowSize);
@@ -171,7 +176,7 @@ namespace MatrixCalc
                 while (true)
                 {
                     Console.SetCursorPosition(0, 0);
-                    Console.WriteLine(matrix.ToStringWithReplacedCurrentSymbol() + "\n\n"); // Printing Matrix
+                    Console.WriteLine(matrix.ToStringWithReplacedCurrentSymbol(useSOLE) + "\n\n"); // Printing Matrix
                     var askLine = $"Введите число: {currentInput} "; // Line to ask
                     var userInput = ConsoleController.AskUserOneCharWithOffset(askLine, 1); // Asking for input
 
