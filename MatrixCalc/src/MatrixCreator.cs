@@ -12,7 +12,7 @@ namespace MatrixCalc
         ///     Create Matrix with user data
         /// </summary>
         /// <returns>Matrix</returns>
-        public static Matrix CreateUserMatrix(bool useSOLE=false)
+        public static Matrix CreateUserMatrix(bool useSOLE = false)
         {
             // Getting size from user
             var (columnSize, rowSize) = AskUserForMatrixSize(useSOLE);
@@ -29,8 +29,9 @@ namespace MatrixCalc
         /// </summary>
         /// <param name="columnSize"></param>
         /// <param name="rowSize"></param>
+        /// <param name="useZeros"></param>
         /// <returns>Empty matrix</returns>
-        public static Matrix CreateEmptyMatrix(int columnSize, int rowSize)
+        public static Matrix CreateEmptyMatrix(int columnSize, int rowSize, bool useZeros = false)
         {
             // Initialize empty array
             var matrixData = new double[columnSize][];
@@ -42,7 +43,7 @@ namespace MatrixCalc
 
                 for (var rowIndex = 0; rowIndex < rowSize; rowIndex++)
                     // Set infinity as item 
-                    row[rowIndex] = double.PositiveInfinity;
+                    row[rowIndex] = useZeros ? 0 : double.PositiveInfinity;
 
                 // Put row into array
                 matrixData[columnIndex] = row;

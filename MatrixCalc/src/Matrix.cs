@@ -59,9 +59,13 @@ namespace MatrixCalc
         /// <param name="columnIndex"></param>
         /// <param name="rowIndex"></param>
         /// <returns>Cell value</returns>
-        private double GetItem(int columnIndex, int rowIndex)
+        private double GetItem(int columnIndex, int rowIndex, bool round = false)
         {
-            return _matrix[columnIndex][rowIndex];
+            var item = _matrix[columnIndex][rowIndex];
+
+            if (round) item = Math.Round(item, 3);
+
+            return item;
         }
 
         /// <summary>
@@ -89,7 +93,7 @@ namespace MatrixCalc
                 for (var rowIndex = 0; rowIndex < _matrix[0].Length; rowIndex++)
                 {
                     // Getting matrix cell
-                    var item = _matrix[columnIndex][rowIndex];
+                    var item = GetItem(columnIndex, rowIndex, true);
 
                     // Create spaces to max length 
                     var spaces = new string(' ', rowLengths[rowIndex] - item.ToString().Length + 2);
@@ -133,28 +137,42 @@ namespace MatrixCalc
         ///     Gets matrix as SOLE
         /// </summary>
         /// <returns>SOLE</returns>
-        public string ToStringAsSOLE()
+        public string ToStringAsSOLE(bool showFreeVariables=false)
         {
+            // Remove negative Zeros
+            SetNegativeZeroToPositiveZeros();
+
             var matrix = "";
 
-            for (var columnIndex = 0; columnIndex < ColumnSize; columnIndex++)
+            var rowLimit = RowSize > ColumnSize ? ColumnSize : RowSize - 1;
+
+            
+            for (var columnIndex = 0; columnIndex < rowLimit; columnIndex++)
             {
                 if (_matrix[columnIndex].Sum() == 0) continue;
 
-                if (_matrix[columnIndex].Take(RowSize - 1).Sum() == 0) throw new ArgumentException("Нет решений!");
+                if (_matrix.Select(row => row.Take(RowSize - 1).All(item => item == 0)).Any(x => x)) throw new ArgumentException("СЛАУ не имеет решения!");
                 
                 string row = " │" + string.Join("", _matrix[columnIndex].Take(RowSize - 1)
-                              .Select((item, index) =>
-                                  item != 0
-                                      ? (item > 0 ? " +" : " ") +
-                                        (item != 1 ? $"{item}" : item < 0 ? "-" : "") +
-                                        (char) (index + 97)
-                                      : "")) +
-                          $" = {GetItem(columnIndex, RowSize - 1)}\n";
+                           .Select((item, rowIndex) =>
+                               item != 0 ? (item > 0 ? " +" : " ") +
+                                     (item != 1 ? $"{Math.Round(item, 3)}" : item < 0 ? "-" : "") +
+                                     (char) (rowIndex + 97)
+                                   : "")) +
+                       $" = {GetItem(columnIndex, RowSize - 1, true)} {new string(' ', RowSize)}\n";
+
 
                 if (row[3] == '+') row = row.Remove(3, 1);
 
                 matrix += row;
+            }
+
+            if (showFreeVariables && RowSize > ColumnSize)
+            {
+                for (var columnIndex = rowLimit; columnIndex < RowSize - 1; columnIndex++)
+                {
+                    matrix += $" │ {(char) (columnIndex + 97)} - свободная переменная\n";
+                }
             }
 
             return matrix;
@@ -173,7 +191,7 @@ namespace MatrixCalc
                 var item = GetItem(columnIndex, rowIndex);
 
                 // Multiply item by number
-                item = Math.Round(item * number, 6);
+                item = Math.Round(item * number, 10);
 
                 // Setting item to matrix
                 SetItem(item, columnIndex, rowIndex);
@@ -199,7 +217,7 @@ namespace MatrixCalc
                 var item2 = matrixToAdd.GetItem(columnIndex, rowIndex);
 
                 // Add item to item
-                item1 = difference ? Math.Round(item1 - item2, 6) : Math.Round(item1 + item2, 6);
+                item1 = difference ? Math.Round(item1 - item2, 10) : Math.Round(item1 + item2, 10);
 
                 // Setting item to matrix
                 SetItem(item1, columnIndex, rowIndex);
@@ -263,7 +281,7 @@ namespace MatrixCalc
         {
             // Getting longest items in Column
             var rowLengths = _matrix[0].Select((item, rowIndex) => _matrix.Select((row, columnIndex) =>
-                _matrix[columnIndex][rowIndex].ToString()).OrderByDescending(s => s.Length).First().Length).ToArray();
+                GetItem(columnIndex, rowIndex, true).ToString()).OrderByDescending(s => s.Length).First().Length).ToArray();
 
             return rowLengths;
         }
@@ -335,22 +353,82 @@ namespace MatrixCalc
             return determinant;
         }
 
-        public void SolveByGaussianElimination()
+        /// <summary>
+        /// Getting new matrix that is solved by Gaussian Elimination
+        /// </summary>
+        /// <returns>Solved matrix</returns>
+        public Matrix SolveByGaussianElimination()
         {
-            ConvertToRowEchelonMatrix();
+            // Create matrix clone
+            var matrixClone = new Matrix(_matrix);
+
+            matrixClone.ConvertToReducedRowEchelonMatrix();
+
+            return matrixClone;
         }
 
         /// <summary>
-        /// Converts Matrix to Row Echelon Form
+        /// Getting new matrix that is solved by Cramer's Rule
+        /// </summary>
+        /// <returns>Solved matrix</returns>
+        /// <exception cref="ArgumentException"></exception>
+        public Matrix SolveByCramersRule()
+        {
+            // Init empty array for answers
+            var answersMatrix = MatrixCreator.CreateEmptyMatrix(ColumnSize, RowSize, true);
+
+            // Get determinant of matrix without last column
+            var matrixWithoutLastColumn = new Matrix(_matrix);
+            matrixWithoutLastColumn.RemoveColumn(RowSize - 1);
+            var matrixDeterminant = matrixWithoutLastColumn.GetDeterminant();
+
+            // Check if can be solved
+            if (matrixDeterminant == 0) throw new ArgumentException("Невозможно решить методом Крамера");
+
+            for (var rowIndex = 0; rowIndex < matrixWithoutLastColumn.RowSize; rowIndex++)
+            {
+                // Create matrix with swapped columns
+                var swappedMatrix = new Matrix(_matrix);
+                swappedMatrix.SwapColumns(rowIndex, RowSize - 1);
+                swappedMatrix.RemoveColumn(RowSize - 1);
+
+                // Get determinant of this matrix
+                var swappedMatrixDeterminant = swappedMatrix.GetDeterminant();
+
+                // Calculate answer
+                var answer = Math.Round(swappedMatrixDeterminant / matrixDeterminant, 10);
+
+                // Save answer to answerMatrix
+                answersMatrix.SetItem(1, rowIndex, rowIndex);
+                answersMatrix.SetItem(answer, rowIndex, RowSize - 1);
+            }
+
+            return answersMatrix;
+        }
+
+        /// <summary>
+        ///     Removes columns from matrix
+        /// </summary>
+        /// <param name="columnIndex"></param>
+        private void RemoveColumn(int columnIndex)
+        {
+            _matrix = _matrix.Select(row => row[..columnIndex].Concat(row[(columnIndex + 1)..]).ToArray()).ToArray();
+        }
+
+        /// <summary>
+        ///     Converts Matrix to Row Echelon Form
         /// </summary>
         private void ConvertToRowEchelonMatrix()
         {
-            // НУЖНО СДЕЛАТЬ СМЕНУ СТРОК ЕСЛИ 0 НА ПЕРВОМ МЕСТЕ
-            
-            // Gets the row limit
-            var rowLimit = RowSize >= ColumnSize ? RowSize == ColumnSize ? 1 : 0 : 2;
+            if (RowSize < 3) throw new ArgumentException("Нужно минимум 2 переменные");
 
-            for (var rowIndex = 0; rowIndex < ColumnSize - rowLimit; rowIndex++)
+            // Swap if 1st element is zero
+            if (GetItem(0, 0) == 0) SwapRows(0, ColumnSize - 1);
+
+            // Gets the row limit
+            var rowLimit = RowSize > ColumnSize ? ColumnSize : RowSize - 1;
+
+            for (var rowIndex = 0; rowIndex < rowLimit; rowIndex++)
             {
                 // Gets the row item
                 var rowItem = GetItem(rowIndex, rowIndex);
@@ -372,6 +450,42 @@ namespace MatrixCalc
             }
         }
 
+        /// <summary>
+        ///     Converts Matrix to Reduced Row Echelon Form
+        /// </summary>
+        private void ConvertToReducedRowEchelonMatrix()
+        {
+            ConvertToRowEchelonMatrix();
+            
+            // Gets the row limit
+            var columnLimit = RowSize > ColumnSize ? ColumnSize : RowSize - 1;
+
+            for (var columnIndex = 0; columnIndex < columnLimit - 1; columnIndex++)
+            {
+                if (_matrix[columnIndex].Take(RowSize - 1).Sum() == 0) continue;
+                
+                int rowLimit = RowSize > ColumnSize + 1 ? ColumnSize : RowSize - 1;
+                
+                for (var rowIndex = columnIndex + 1; rowIndex < rowLimit; rowIndex++)
+                {
+                    // Gets the row item
+                    var rowItem = GetItem(columnIndex, rowIndex);
+
+                    // Gets the column item
+                    var columnItem = GetItem(rowIndex, rowIndex);
+
+                    // Gets the ratio for multiplication
+                    var ratio = rowItem / columnItem;
+
+                    // Subtracts rows
+                    SubtractRowFromRow(columnIndex, rowIndex, ratio);
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Turns every negative zero to positive zero
+        /// </summary>
         private void SetNegativeZeroToPositiveZeros()
         {
             _matrix = _matrix.Select(row => row.Select(item => item == -0 ? 0 : item).ToArray()).ToArray();
@@ -384,7 +498,7 @@ namespace MatrixCalc
         /// <param name="number"></param>
         private void MultiplyRowByNumber(int columnIndex, double number)
         {
-            _matrix[columnIndex] = _matrix[columnIndex].Select(item => Math.Round(item * number, 6)).ToArray();
+            _matrix[columnIndex] = _matrix[columnIndex].Select(item => Math.Round(item * number, 10)).ToArray();
         }
 
         /// <summary>
@@ -392,11 +506,34 @@ namespace MatrixCalc
         /// </summary>
         /// <param name="columnThatChangesIndex"></param>
         /// <param name="columnIndex"></param>
+        /// <param name="ratio"></param>
         private void SubtractRowFromRow(int columnThatChangesIndex, int columnIndex, double ratio)
         {
             for (var rowIndex = 0; rowIndex < RowSize; rowIndex++)
                 _matrix[columnThatChangesIndex][rowIndex] = Math.Round(
-                    _matrix[columnThatChangesIndex][rowIndex] - _matrix[columnIndex][rowIndex] * ratio, 6);
+                    _matrix[columnThatChangesIndex][rowIndex] - _matrix[columnIndex][rowIndex] * ratio, 10);
+        }
+
+        /// <summary>
+        ///     Swaps 2 rows
+        /// </summary>
+        /// <param name="rowIndex1"></param>
+        /// <param name="rowIndex2"></param>
+        private void SwapRows(int rowIndex1, int rowIndex2)
+        {
+            (_matrix[rowIndex1], _matrix[rowIndex2]) = (_matrix[rowIndex2], _matrix[rowIndex1]);
+        }
+
+        /// <summary>
+        ///     Swaps 2 column
+        /// </summary>
+        /// <param name="columnIndex1"></param>
+        /// <param name="columnIndex2"></param>
+        private void SwapColumns(int columnIndex1, int columnIndex2)
+        {
+            Transpose();
+            SwapRows(columnIndex1, columnIndex2);
+            Transpose();
         }
 
         /// <summary>

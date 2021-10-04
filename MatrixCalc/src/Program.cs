@@ -9,8 +9,7 @@ namespace MatrixCalc
     {
         private static void Main(string[] args)
         {
-            // _______89
-            // var matrix1 = MatrixCreator.CreateRandomMatrix(5, 4, true);
+            // var matrix1 = MatrixCreator.CreateRandomMatrix(4, 5, true);
             var matrix1 = MatrixCreator.CreateUserMatrix(true);
             Console.Clear();
             // var matrix2 = MatrixCreator.CreateUserMatrix();
@@ -18,11 +17,15 @@ namespace MatrixCalc
             // var matrix1 = MatrixCreator.CreateRandomMatrix(1, 2);
             // var matrix2 = MatrixCreator.CreateRandomMatrix(2, 1);
 
-            Console.WriteLine(matrix1.ToStringAsSOLE());
-            matrix1.SolveByGaussianElimination();
-            Console.WriteLine(matrix1.ToStringAsSOLE());
+            ;
+            // matrix1.SolveByGaussianElimination();
+            // matrix1.RemoveColumn(1);
             Console.WriteLine(matrix1);
-            // Console.WriteLine(matrix2);
+            Console.WriteLine(matrix1.ToStringAsSOLE());
+            // matrix1.Transpose();
+            // Console.WriteLine(matrix1.SolveByCramersRule().ToStringAsSOLE());
+            Console.WriteLine(matrix1.SolveByGaussianElimination().ToStringAsSOLE(true));
+            Console.WriteLine(matrix1.SolveByGaussianElimination());
 
             // matrix1.MultiplyByMatrix(matrix2);
 
