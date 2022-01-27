@@ -1,36 +1,26 @@
-﻿using System;
-
-namespace MatrixCalc
+﻿namespace MatrixCalc
 {
     /// <summary>
     ///     Main class
     /// </summary>
     internal class Program
     {
+        /// <summary>
+        ///     Main Method
+        /// </summary>
+        /// <param name="args"></param>
         private static void Main(string[] args)
         {
-            // var matrix1 = MatrixCreator.CreateRandomMatrix(4, 5, true);
-            var matrix1 = MatrixCreator.CreateUserMatrix(true);
-            Console.Clear();
-            // var matrix2 = MatrixCreator.CreateUserMatrix();
-            // Console.Clear();
-            // var matrix1 = MatrixCreator.CreateRandomMatrix(1, 2);
-            // var matrix2 = MatrixCreator.CreateRandomMatrix(2, 1);
+            while (true)
+            {
+                MenuController.ShowMenu();
+                var actionIndex = MenuController.AskUserForAction();
 
-            ;
-            // matrix1.SolveByGaussianElimination();
-            // matrix1.RemoveColumn(1);
-            Console.WriteLine(matrix1);
-            Console.WriteLine(matrix1.ToStringAsSOLE());
-            // matrix1.Transpose();
-            // Console.WriteLine(matrix1.SolveByCramersRule().ToStringAsSOLE());
-            Console.WriteLine(matrix1.SolveByGaussianElimination().ToStringAsSOLE(true));
-            Console.WriteLine(matrix1.SolveByGaussianElimination());
+                MenuController.ShowInputOptions(actionIndex);
+                var inputOptionIndex = MenuController.AskUserForInputMethod(actionIndex);
 
-            // matrix1.MultiplyByMatrix(matrix2);
-
-
-            Console.ReadKey();
+                MenuController.DoAction(actionIndex, inputOptionIndex);
+            }
         }
     }
 }

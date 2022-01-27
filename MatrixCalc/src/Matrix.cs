@@ -17,9 +17,11 @@ namespace MatrixCalc
         /// <summary>
         ///     Initialize Matrix
         /// </summary>
-        /// <param name="matrix"></param>
+        /// <param name="matrix">Matrix data</param>
         public Matrix(double[][] matrix)
         {
+            if (matrix.Select(row => row.Length).Distinct().ToArray().Length != 1) 
+                throw new ArgumentException("В матрице не хватает элементов");
             _matrix = matrix;
         }
 
@@ -37,8 +39,8 @@ namespace MatrixCalc
         ///     Setting matrix item with item
         /// </summary>
         /// <param name="item">Item to set</param>
-        /// <param name="columnIndex"></param>
-        /// <param name="rowIndex"></param>
+        /// <param name="columnIndex">Index of column</param>
+        /// <param name="rowIndex">Index of row</param>
         /// <returns>If cell was modified</returns>
         public bool SetItem(double item, int columnIndex, int rowIndex)
         {
@@ -56,8 +58,9 @@ namespace MatrixCalc
         /// <summary>
         ///     Getting item
         /// </summary>
-        /// <param name="columnIndex"></param>
-        /// <param name="rowIndex"></param>
+        /// <param name="columnIndex">Index of column</param>
+        /// <param name="rowIndex">Index of row</param>
+        /// <param name="round">If item must be rounded</param>
         /// <returns>Cell value</returns>
         private double GetItem(int columnIndex, int rowIndex, bool round = false)
         {
@@ -88,7 +91,7 @@ namespace MatrixCalc
                 var (leadingSymbol, endingSymbol) = GetLeadingAndEndingChar(columnIndex);
 
                 // Create row with starting symbol
-                var row = $"{leadingSymbol}  ";
+                var row = $"\t{leadingSymbol}  ";
 
                 for (var rowIndex = 0; rowIndex < _matrix[0].Length; rowIndex++)
                 {
@@ -136,44 +139,46 @@ namespace MatrixCalc
         /// <summary>
         ///     Gets matrix as SOLE
         /// </summary>
+        /// <exception cref="ArgumentException">If SOLE have no solutions</exception>
         /// <returns>SOLE</returns>
-        public string ToStringAsSOLE(bool showFreeVariables=false)
+        public string ToStringAsSOLE(bool showFreeVariables = false)
         {
             // Remove negative Zeros
             SetNegativeZeroToPositiveZeros();
 
             var matrix = "";
 
+            // Sets the limit of the row
             var rowLimit = RowSize > ColumnSize ? ColumnSize : RowSize - 1;
-
             
             for (var columnIndex = 0; columnIndex < rowLimit; columnIndex++)
             {
+                // If row if empty => skip it
                 if (_matrix[columnIndex].Sum() == 0) continue;
 
-                if (_matrix.Select(row => row.Take(RowSize - 1).All(item => item == 0)).Any(x => x)) throw new ArgumentException("СЛАУ не имеет решения!");
-                
-                string row = " │" + string.Join("", _matrix[columnIndex].Take(RowSize - 1)
-                           .Select((item, rowIndex) =>
-                               item != 0 ? (item > 0 ? " +" : " ") +
-                                     (item != 1 ? $"{Math.Round(item, 3)}" : item < 0 ? "-" : "") +
-                                     (char) (rowIndex + 97)
-                                   : "")) +
-                       $" = {GetItem(columnIndex, RowSize - 1, true)} {new string(' ', RowSize)}\n";
+                // If SOLE have no solutions
+                if (_matrix.Select(row => row.Take(RowSize - 1).All(item => item == 0)).Any(x => x))
+                    throw new ArgumentException("СЛАУ не имеет решения!");
 
+                // Generation the row
+                var row = "\t│" + string.Join("", _matrix[columnIndex].Take(RowSize - 1)
+                              .Select((item, rowIndex) => 
+                                  item != 0 ? (item > 0 ? " +" : " ") + 
+                                              (item != 1 ? $"{Math.Round(item, 3)}" : item < 0 ? "-" : "") + 
+                                              (char) (rowIndex + 97) : "")) + 
+                          $" = {GetItem(columnIndex, RowSize - 1, true)} {new string(' ', RowSize)}\n";
 
+                // Removes + from first variable
                 if (row[3] == '+') row = row.Remove(3, 1);
 
+                // Adds row to matrix
                 matrix += row;
             }
 
+            // Adding free variables to matrix
             if (showFreeVariables && RowSize > ColumnSize)
-            {
                 for (var columnIndex = rowLimit; columnIndex < RowSize - 1; columnIndex++)
-                {
-                    matrix += $" │ {(char) (columnIndex + 97)} - свободная переменная\n";
-                }
-            }
+                    matrix += $"\t│ {(char) (columnIndex + 97)} - свободная переменная\n";
 
             return matrix;
         }
@@ -181,7 +186,7 @@ namespace MatrixCalc
         /// <summary>
         ///     Multiply matrix by number
         /// </summary>
-        /// <param name="number"></param>
+        /// <param name="number">The number that will be used for multiplication</param>
         public void MultiplyByNumber(double number)
         {
             for (var columnIndex = 0; columnIndex < ColumnSize; columnIndex++)
@@ -201,14 +206,10 @@ namespace MatrixCalc
         /// <summary>
         ///     Add matrix to matrix
         /// </summary>
-        /// <param name="matrixToAdd"></param>
-        /// <param name="difference">If minus</param>
-        /// <exception cref="ArgumentException"></exception>
-        public void AddToMatrix(Matrix matrixToAdd, bool difference = false)
+        /// <param name="matrixToAdd">Matrix that will be added</param>
+        /// <param name="subtract">If minus</param>
+        public void AddToMatrix(Matrix matrixToAdd, bool subtract = false)
         {
-            // Check matrices' size equality
-            if (Validator.AreMatricesHaveEqualSize(this, matrixToAdd) is false) throw new ArgumentException("Matrices have different sizes");
-
             for (var columnIndex = 0; columnIndex < ColumnSize; columnIndex++)
             for (var rowIndex = 0; rowIndex < RowSize; rowIndex++)
             {
@@ -217,7 +218,7 @@ namespace MatrixCalc
                 var item2 = matrixToAdd.GetItem(columnIndex, rowIndex);
 
                 // Add item to item
-                item1 = difference ? Math.Round(item1 - item2, 10) : Math.Round(item1 + item2, 10);
+                item1 = subtract ? Math.Round(item1 - item2, 10) : Math.Round(item1 + item2, 10);
 
                 // Setting item to matrix
                 SetItem(item1, columnIndex, rowIndex);
@@ -227,14 +228,9 @@ namespace MatrixCalc
         /// <summary>
         ///     Multiply matrix by matrix
         /// </summary>
-        /// <param name="matrixToMultiply"></param>
-        /// <exception cref="ArgumentException"></exception>
+        /// <param name="matrixToMultiply">Matrix that will be used for multiplication</param>
         public void MultiplyByMatrix(Matrix matrixToMultiply)
         {
-            // Check if matrices can be multiplied
-            if (Validator.AreMatricesCanBeMultiplied(this, matrixToMultiply) is false)
-                throw new ArgumentException("Matrices can not be multiplied due to sizes");
-
             // Create empty array
             var matrix = new double[ColumnSize][];
 
@@ -245,6 +241,7 @@ namespace MatrixCalc
 
                 for (var rowIndex = 0; rowIndex < matrixToMultiply.RowSize; rowIndex++)
                 {
+                    // Default value
                     double item = 0;
 
                     for (var itemIndex = 0; itemIndex < RowSize; itemIndex++)
@@ -269,8 +266,8 @@ namespace MatrixCalc
         public void Transpose()
         {
             // Change rows and columns
-            _matrix = _matrix[0].Select((item, rowIndex) =>
-                _matrix.Select((row, columnIndex) => _matrix[columnIndex][rowIndex]).ToArray()).ToArray();
+            _matrix = _matrix[0].Select((_, rowIndex) =>
+                _matrix.Select((_, columnIndex) => _matrix[columnIndex][rowIndex]).ToArray()).ToArray();
         }
 
         /// <summary>
@@ -280,7 +277,7 @@ namespace MatrixCalc
         private int[] GetArrayOfLongestItemsInColumns()
         {
             // Getting longest items in Column
-            var rowLengths = _matrix[0].Select((item, rowIndex) => _matrix.Select((row, columnIndex) =>
+            var rowLengths = _matrix[0].Select((_, rowIndex) => _matrix.Select((_, columnIndex) =>
                 GetItem(columnIndex, rowIndex, true).ToString()).OrderByDescending(s => s.Length).First().Length).ToArray();
 
             return rowLengths;
@@ -290,12 +287,9 @@ namespace MatrixCalc
         ///     Getting trace of matrix
         /// </summary>
         /// <returns>Trace of matrix</returns>
-        /// <exception cref="ArgumentException"></exception>
         public double GetTrace()
         {
-            // Check if matrix is square
-            if (Validator.IsMatrixSquare(this) is false) throw new ArgumentException("Matrix must be square");
-
+            // Default value
             double trace = 0;
 
             for (var index = 0; index < RowSize; index++)
@@ -309,12 +303,13 @@ namespace MatrixCalc
         ///     Getting determinant of the matrix
         /// </summary>
         /// <returns>Determinant</returns>
-        /// <exception cref="ArgumentException"></exception>
         public double GetDeterminant()
         {
-            // Checks if not square
-            if (Validator.IsMatrixSquare(this) is false) throw new ArgumentException("Matrix must be square");
-
+            if (ColumnSize == 1 && RowSize == 1)
+            {
+                return GetItem(0, 0);
+            }
+            
             // Checks if 2x2
             if (ColumnSize == 2 && RowSize == 2)
             {
@@ -354,7 +349,7 @@ namespace MatrixCalc
         }
 
         /// <summary>
-        /// Getting new matrix that is solved by Gaussian Elimination
+        ///     Getting new matrix that is solved by Gaussian Elimination
         /// </summary>
         /// <returns>Solved matrix</returns>
         public Matrix SolveByGaussianElimination()
@@ -368,10 +363,10 @@ namespace MatrixCalc
         }
 
         /// <summary>
-        /// Getting new matrix that is solved by Cramer's Rule
+        ///     Getting new matrix that is solved by Cramer's Rule
         /// </summary>
         /// <returns>Solved matrix</returns>
-        /// <exception cref="ArgumentException"></exception>
+        /// <exception cref="ArgumentException">Check if can not be solved</exception>
         public Matrix SolveByCramersRule()
         {
             // Init empty array for answers
@@ -382,7 +377,7 @@ namespace MatrixCalc
             matrixWithoutLastColumn.RemoveColumn(RowSize - 1);
             var matrixDeterminant = matrixWithoutLastColumn.GetDeterminant();
 
-            // Check if can be solved
+            // Check if can not be solved
             if (matrixDeterminant == 0) throw new ArgumentException("Невозможно решить методом Крамера");
 
             for (var rowIndex = 0; rowIndex < matrixWithoutLastColumn.RowSize; rowIndex++)
@@ -456,16 +451,17 @@ namespace MatrixCalc
         private void ConvertToReducedRowEchelonMatrix()
         {
             ConvertToRowEchelonMatrix();
-            
+
             // Gets the row limit
             var columnLimit = RowSize > ColumnSize ? ColumnSize : RowSize - 1;
 
             for (var columnIndex = 0; columnIndex < columnLimit - 1; columnIndex++)
             {
                 if (_matrix[columnIndex].Take(RowSize - 1).Sum() == 0) continue;
-                
-                int rowLimit = RowSize > ColumnSize + 1 ? ColumnSize : RowSize - 1;
-                
+
+                // Setting limit of the row
+                var rowLimit = RowSize > ColumnSize + 1 ? ColumnSize : RowSize - 1;
+
                 for (var rowIndex = columnIndex + 1; rowIndex < rowLimit; rowIndex++)
                 {
                     // Gets the row item
@@ -494,8 +490,8 @@ namespace MatrixCalc
         /// <summary>
         ///     Multiplies row by given number
         /// </summary>
-        /// <param name="columnIndex"></param>
-        /// <param name="number"></param>
+        /// <param name="columnIndex">Index of column</param>
+        /// <param name="number">Number that will be used to multiplication</param>
         private void MultiplyRowByNumber(int columnIndex, double number)
         {
             _matrix[columnIndex] = _matrix[columnIndex].Select(item => Math.Round(item * number, 10)).ToArray();
@@ -504,9 +500,9 @@ namespace MatrixCalc
         /// <summary>
         ///     Subtracts one row from another
         /// </summary>
-        /// <param name="columnThatChangesIndex"></param>
-        /// <param name="columnIndex"></param>
-        /// <param name="ratio"></param>
+        /// <param name="columnThatChangesIndex">Index of column that changes</param>
+        /// <param name="columnIndex">Index of column</param>
+        /// <param name="ratio">The ratio of multiplication</param>
         private void SubtractRowFromRow(int columnThatChangesIndex, int columnIndex, double ratio)
         {
             for (var rowIndex = 0; rowIndex < RowSize; rowIndex++)
@@ -517,8 +513,8 @@ namespace MatrixCalc
         /// <summary>
         ///     Swaps 2 rows
         /// </summary>
-        /// <param name="rowIndex1"></param>
-        /// <param name="rowIndex2"></param>
+        /// <param name="rowIndex1">Index of first row</param>
+        /// <param name="rowIndex2">Index of second row</param>
         private void SwapRows(int rowIndex1, int rowIndex2)
         {
             (_matrix[rowIndex1], _matrix[rowIndex2]) = (_matrix[rowIndex2], _matrix[rowIndex1]);
@@ -527,8 +523,8 @@ namespace MatrixCalc
         /// <summary>
         ///     Swaps 2 column
         /// </summary>
-        /// <param name="columnIndex1"></param>
-        /// <param name="columnIndex2"></param>
+        /// <param name="columnIndex1">Index of first column</param>
+        /// <param name="columnIndex2">Index of second column</param>
         private void SwapColumns(int columnIndex1, int columnIndex2)
         {
             Transpose();
@@ -630,7 +626,7 @@ namespace MatrixCalc
         /// <summary>
         ///     Getting leading and ending symbols based on row index
         /// </summary>
-        /// <param name="columnIndex"></param>
+        /// <param name="columnIndex">Index of column</param>
         /// <returns>Array of symbols</returns>
         private (string, string) GetLeadingAndEndingChar(int columnIndex)
         {

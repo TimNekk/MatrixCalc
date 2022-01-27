@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace MatrixCalc
 {
@@ -27,6 +28,53 @@ namespace MatrixCalc
             // Getting user input key
             var inputKey = Console.ReadKey();
             return inputKey;
+        }
+
+        /// <summary>
+        ///     Asking user for number with limitations
+        /// </summary>
+        /// <param name="ask">Line that will be printed</param>
+        /// <param name="toRange">The maximum value of number</param>
+        /// <returns>User number</returns>
+        public static int AskUserForNumber(string ask, int toRange = int.MaxValue)
+        {
+            var currentInput = "";
+
+            while (true)
+            {
+                var askLine = $"{ask}: {currentInput} "; // Line to ask
+                var userInput = AskUserOneCharWithOffset(askLine, 1); // Asking for input
+
+                if (Validator.IsNumber(userInput.KeyChar) &&
+                    int.Parse(currentInput + userInput.KeyChar) >= 1 &&
+                    int.Parse(currentInput + userInput.KeyChar) <= toRange) // If a valid number
+                    // Adding key to currentInput
+                    currentInput += userInput.KeyChar.ToString();
+                else if (userInput.Key is ConsoleKey.Enter && currentInput != "") // If Tab or enter
+                    break;
+                else if (userInput.Key is ConsoleKey.Backspace && currentInput != "") // If backspace
+                    currentInput = currentInput[..^1]; // Remove last char
+                else if (userInput.Key == ConsoleKey.Escape)
+                    Process.GetCurrentProcess().Kill();
+            }
+
+            return int.Parse(currentInput);
+        }
+
+        /// <summary>
+        ///     Prints text with given colors
+        /// </summary>
+        /// <param name="whatToPrint">Object to print</param>
+        /// <param name="foregroundColor">Color of foreground</param>
+        /// <param name="backgroundColor">Color of background</param>
+        public static void PrintWithColor(object whatToPrint, 
+            ConsoleColor foregroundColor = ConsoleColor.White, 
+            ConsoleColor backgroundColor = ConsoleColor.Black)
+        {
+            Console.ForegroundColor = foregroundColor;
+            Console.BackgroundColor = backgroundColor;
+            Console.WriteLine(whatToPrint);
+            Console.ResetColor();
         }
     }
 }

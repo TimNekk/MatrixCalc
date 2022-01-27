@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using src;
 
 namespace MatrixCalc
 {
@@ -12,13 +13,50 @@ namespace MatrixCalc
         ///     Create Matrix with user data
         /// </summary>
         /// <returns>Matrix</returns>
-        public static Matrix CreateUserMatrix(bool useSOLE = false)
+        public static Matrix CreateUserMatrix(bool useSOLE = false, int columnSize = 0, int rowSize = 0)
         {
-            // Getting size from user
-            var (columnSize, rowSize) = AskUserForMatrixSize(useSOLE);
+            MenuController.ShowLogo();
 
             // Getting matrix data from user
             var matrix = AskUserForMatrixData(columnSize, rowSize, useSOLE);
+
+            return matrix;
+        }
+
+        /// <summary>
+        ///     Create matrix from file
+        /// </summary>
+        /// <param name="fileName">Name of file</param>
+        /// <param name="toRange">Maximum matrix size</param>
+        /// <param name="mustBeSquare">If matrix must be square</param>
+        /// <param name="columnSize">Pre-Determined size of column</param>
+        /// <param name="rowSize">Pre-Determined size of row</param>
+        /// <returns>Created matrix</returns>
+        public static Matrix CreateMatrixFromFile(string fileName = "input.txt", int toRange = int.MaxValue, bool mustBeSquare = false,
+            int columnSize = 0, int rowSize = 0)
+        {
+            // Reading matrix data from file
+            string matrixDataFromFile = FileReader.GetTextFromFile(fileName);
+            double[][] matrixData;
+            
+            // Converting to doubles array
+            matrixData = matrixDataFromFile
+                .Replace('.', ',')
+                .Split('\n')
+                .Select(row => row.Split(" ").Select(double.Parse).ToArray()).ToArray();
+
+            // Creating matrix with given data
+            Matrix matrix = new Matrix(matrixData);
+
+            // Validate matrix
+            if (mustBeSquare && (Validator.IsMatrixSquare(matrix) is false)) 
+                throw new ArgumentException("Матрица должна быть квадратной");
+
+            if (matrix.ColumnSize > toRange || matrix.RowSize > toRange) 
+                throw new ArgumentException($"Размер матрицы не должен превышать {toRange}");
+            
+            if (columnSize != 0 && columnSize != matrix.ColumnSize || rowSize != 0 && rowSize != matrix.RowSize)
+                throw new ArgumentException("Матрицы должны быть правильных размеров");
 
             return matrix;
         }
@@ -27,9 +65,9 @@ namespace MatrixCalc
         /// <summary>
         ///     Create empty matrix
         /// </summary>
-        /// <param name="columnSize"></param>
-        /// <param name="rowSize"></param>
-        /// <param name="useZeros"></param>
+        /// <param name="columnSize">Size of column</param>
+        /// <param name="rowSize">Size of row</param>
+        /// <param name="useZeros">Use zeros instead of infinities</param>
         /// <returns>Empty matrix</returns>
         public static Matrix CreateEmptyMatrix(int columnSize, int rowSize, bool useZeros = false)
         {
@@ -58,8 +96,8 @@ namespace MatrixCalc
         /// <summary>
         ///     Create random matrix
         /// </summary>
-        /// <param name="columnSize"></param>
-        /// <param name="rowSize"></param>
+        /// <param name="columnSize">Size of column</param>
+        /// <param name="rowSize">Size of row</param>
         /// <returns>Random matrix</returns>
         public static Matrix CreateRandomMatrix(int columnSize, int rowSize, bool rounded = false)
         {
@@ -112,63 +150,63 @@ namespace MatrixCalc
         ///     Getting size from user
         /// </summary>
         /// <returns>Size Tuple</returns>
-        private static (int, int) AskUserForMatrixSize(bool useSOLE = false)
+        public static (int, int) AskUserForMatrixSize(int toRange = 10, bool mustBeSquare = false, bool useSOLE = false,
+            int columnSize = 0, int rowSize = 0)
         {
             var currentInput = "";
-            int columnSize = 0, rowSize = 0; // Default sizes
-            var workingWithFirstNumber = true; // Whether we work with first number 
-            var offset = 3; // Offset of cursor
+            var workingWithFirstNumber = columnSize == 0; // Whether we work with first number
+            var offset = columnSize == 0 ? 3 : 1; // Offset of cursor
+
+            if (mustBeSquare) Console.WriteLine("Матрица должна быть квадратной\n");
 
             while (true)
             {
                 // Getting user input key
                 var numberBeforeX = workingWithFirstNumber ? currentInput : columnSize.ToString(); // Column Size
                 var numberAfterX = workingWithFirstNumber ? " " : currentInput; // Row Size
-                var askLine = "Введите " +
+                var askLine = " - Введите " +
                               (useSOLE ? "кол-во уравнений и переменных" : "размер матрицы") +
+                              (toRange == int.MaxValue ? "" : $" (от {1}x{1} до {toRange}x{toRange})") +
                               $": {numberBeforeX}x{numberAfterX} "; // Line to ask
                 var userInput = ConsoleController.AskUserOneCharWithOffset(askLine, offset);
 
-                if (Validator.IsNumber(userInput.KeyChar) && (userInput.KeyChar == '0' && currentInput == "") is false) // If a number
+                if (Validator.IsNumber(userInput.KeyChar) &&
+                    int.Parse(currentInput + userInput.KeyChar) >= 1 &&
+                    int.Parse(currentInput + userInput.KeyChar) <= toRange
+                ) { currentInput += userInput.KeyChar.ToString(); } // Adding key to currentInput
+                
+                else if (userInput.Key is ConsoleKey.Tab or ConsoleKey.Enter && currentInput != "" &&
+                         (workingWithFirstNumber || !mustBeSquare || columnSize == int.Parse(currentInput + userInput.KeyChar)))
                 {
-                    // Adding key to currentInput
-                    currentInput += userInput.KeyChar.ToString();
-                }
-                else if (userInput.Key is ConsoleKey.Tab or ConsoleKey.Enter && currentInput != "") // If Tab or enter
-                {
-                    if (workingWithFirstNumber is false) // If last number was entered
-                    {
-                        rowSize = int.Parse(currentInput);
-                        break;
-                    }
+                    if (workingWithFirstNumber is false) { rowSize = int.Parse(currentInput); break; }
 
                     columnSize = int.Parse(currentInput); // Setting column size
+                    if (rowSize != 0) break;
                     currentInput = ""; // Reset current input
                     workingWithFirstNumber = false; // Now working with second number
                     offset = 1; // Adjust offset to work with second number
                 }
+                
                 else if (userInput.Key is ConsoleKey.Backspace && currentInput != "") // If backspace
-                {
-                    currentInput = currentInput[..^1]; // Remove last char
-                }
+                { currentInput = currentInput[..^1]; } // Remove last char
             }
-
+            
             return (columnSize, useSOLE ? rowSize + 1 : rowSize);
         }
 
         /// <summary>
         ///     Getting data from user
         /// </summary>
-        /// <param name="columnSize"></param>
-        /// <param name="rowSize"></param>
-        /// <param name="useSOLE"></param>
+        /// <param name="columnSize">Size of column</param>
+        /// <param name="rowSize">Size of row</param>
+        /// <param name="useSOLE">Ask inputs as SOLE</param>
         /// <returns>Matrix</returns>
         private static Matrix AskUserForMatrixData(int columnSize, int rowSize, bool useSOLE = false)
         {
             // Creating empty matrix
             var matrix = CreateEmptyMatrix(columnSize, rowSize);
 
-            Console.Clear();
+            var logoHeight = FileReader.GetLogoHeight();
 
             for (var columnIndex = 0; columnIndex < columnSize; columnIndex++)
             for (var rowIndex = 0; rowIndex < rowSize; rowIndex++)
@@ -176,9 +214,9 @@ namespace MatrixCalc
                 var currentInput = "";
                 while (true)
                 {
-                    Console.SetCursorPosition(0, 0);
-                    Console.WriteLine(matrix.ToStringWithReplacedCurrentSymbol(useSOLE) + "\n\n"); // Printing Matrix
-                    var askLine = $"Введите число: {currentInput} "; // Line to ask
+                    Console.SetCursorPosition(0, logoHeight);
+                    ConsoleController.PrintWithColor(matrix.ToStringWithReplacedCurrentSymbol(useSOLE) + "\n", ConsoleColor.Cyan); // Printing Matrix
+                    var askLine = $" - Введите число: {currentInput} "; // Line to ask
                     var userInput = ConsoleController.AskUserOneCharWithOffset(askLine, 1); // Asking for input
 
                     // Getting Validators
@@ -209,9 +247,9 @@ namespace MatrixCalc
         /// <summary>
         ///     Getting validators
         /// </summary>
-        /// <param name="userInput"></param>
-        /// <param name="currentInput"></param>
-        /// <returns>validators</returns>
+        /// <param name="userInput">User input key</param>
+        /// <param name="currentInput">Current input</param>
+        /// <returns>Validators</returns>
         private static (bool, bool, bool) GetAllowValidators(ConsoleKeyInfo userInput, string currentInput)
         {
             // Checking if minus can be placed
@@ -220,7 +258,7 @@ namespace MatrixCalc
             // Checking if dot can be placed
             var dotAllowed = userInput.KeyChar is '.' or ',' &&
                              currentInput.Length != 0 &&
-                             currentInput.Replace(',', '.').Any(s => s == '.');
+                             currentInput.Replace(',', '.').Any(s => s == '.') is false;
 
             // Checking if zero can be placed
             var zeroAllowed = userInput.KeyChar == '0' && (currentInput.Length == 1 && currentInput[0] != '0' || currentInput.Length != 1);
